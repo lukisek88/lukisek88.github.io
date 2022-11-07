@@ -27,7 +27,7 @@ $(document).ready(function() {
     });
   }
 
-  function getAllTasks() {
+  function getTasks() {
     var requestUrl = apiRoot;
 
     $.ajax({
