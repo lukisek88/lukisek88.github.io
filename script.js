@@ -5,7 +5,7 @@ $(document).ready(function() {
   var tasksContainer = $('[data-tasks-container]');
 
   // init
-  getAllTasks();
+  getTasks();
 
   function createElement(data) {
     var element = $(datatableRowTemplate).clone();
@@ -97,7 +97,7 @@ $(document).ready(function() {
       }),
       complete: function(data) {
         if(data.status === 200) {
-          getAllTasks();
+          getTasks();
         }
      }
     });
