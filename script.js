@@ -1,7 +1,7 @@
 $(document).ready(function() {
-
-  var apiRoot = 'https://kodilla-task-manager.herokuapp.com/v1/tasks';
-   const datatableRowTemplate = $('[data-datatable-row-template]').children()[0];
+  const apiRoot = 'https://tasks-prod-kodilla-tasks-9ro86m.mo5.mogenius.io/v1/tasks';
+  const trelloApiRoot = 'https://tasks-prod-kodilla-tasks-9ro86m.mo5.mogenius.io/v1/trello';
+  const datatableRowTemplate = $('[data-datatable-row-template]').children()[0];
   const $tasksContainer = $('[data-tasks-container]');
 
   var availableBoards = {};
