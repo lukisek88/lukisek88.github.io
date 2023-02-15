@@ -1,92 +1,206 @@
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>CRUD</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css?family=Roboto:400,400i,500,500i,700,700i&subset=latin-ext" rel="stylesheet">
-</head>
-<body>
-<h1 class="kodilla-heading kodilla-heading--main">Kodilla CRUD App</h1>
+$(document).ready(function() {
+  const apiRoot = 'https://tasks-prod-kodilla-tasks-9ro86m.mo5.mogenius.io/v1/tasks';
+  const trelloApiRoot = 'ttps://tasks-prod-kodilla-tasks-9ro86m.mo5.mogenius.io/v1/trello';
+  const datatableRowTemplate = $('[data-datatable-row-template]').children()[0];
+  const $tasksContainer = $('[data-tasks-container]');
 
-<main class="crud container">
-  <section class="datatable">
-    <h2>Add a new task</h2>
-    <form
-        class="datatable__row datatable__row--add"
-        method="POST"
-        action="http://localhost:8080/v1/task/createTask"
-        data-task-add-form
-    >
-      <fieldset class="datatable__row-section datatable__row-section--input-section">
-        <label class="datatable__input-label">
-          Task name
-        </label>
-        <input type="text" name="title" placeholder="Insert a task name" required minlength="3">
-      </fieldset>
+  var availableBoards = {};
+  var availableTasks = {};
 
-      <fieldset class="datatable__row-section datatable__row-section--input-section">
-        <label class="datatable__input-label">
-          Task content
-        </label>
-        <textarea name="content" placeholder="Insert task content" required minlength="3"></textarea>
-      </fieldset>
+  // init
 
-      <fieldset class="datatable__row-section datatable__row-section--button-section">
-        <button type="submit" data-task-add-button class="datatable__button">Add a task</button>
-      </fieldset>
-    </form>
-  </section>
-  <section class="datatable">
-    <h2>Tasks from the API</h2>
-    <div class="datatable__tasks-container" data-tasks-container></div>
-  </section>
-</main>
+  getAllTasks();
 
-<div class="template" data-datatable-row-template>
-  <form class="datatable__row" data-task-id="0">
-    <fieldset class="datatable__row-section datatable__row-section--input-section" data-task-name-section>
-      <label class="datatable__input-label">
-        Task name
-      </label>
-      <input type="text" name="title" placeholder="Insert a new task name" data-task-name-input required minlength="3">
-      <p class="datatable__field-value" data-task-name-paragraph></p>
-    </fieldset>
+  function getAllAvailableBoards(callback, callbackArgs) {
+    var requestUrl = trelloApiRoot + '/boards';
 
-    <fieldset class="datatable__row-section datatable__row-section--input-section" data-task-content-section>
-      <label class="datatable__input-label">
-        Task content
-      </label>
-      <textarea name="title" placeholder="Insert new task content" data-task-content-input required minlength="3"></textarea>
-      <p class="datatable__field-value" data-task-content-paragraph></p>
-    </fieldset>
+    $.ajax({
+      url: requestUrl,
+      method: 'GET',
+      contentType: 'application/json',
+      success: function(boards) { callback(callbackArgs, boards); }
+    });
+  }
 
-    <div class="datatable__row-section-wrapper">
-      <fieldset class="datatable__row-section datatable__row-section--button-section">
-        <button type="button" data-task-submit-update-button class="datatable__button datatable__button--editing ">Submit update</button>
-        <button type="button" data-task-edit-abort-button class="datatable__button datatable__button--editing">Abort update</button>
-        <button type="button" data-task-edit-button class="datatable__button">Edit</button>
-        <button type="button" data-task-delete-button class="datatable__button">Delete</button>
-      </fieldset>
+  function createElement(data) {
+    const element = $(datatableRowTemplate).clone();
 
-      <fieldset class="datatable__row-section datatable__row-section--trello-section">
-        <select class="datatable__select" name="board-name" data-board-name-select>
-          <option disabled selected>--- select an board ---</option>
-        </select>
-        <select class="datatable__select" name="list-name" data-list-name-select>
-          <option disabled selected>--- select a list ---</option>
-        </select>
-        <button type="button" data-trello-card-creation-trigger class="datatable__button datatable__button--card-creation">
-          Create a card
-        </button>
-      </fieldset>
-    </div>
-  </form>
-</div>
+    element.attr('data-task-id', data.id);
+    element.find('[data-task-name-section] [data-task-name-paragraph]').text(data.title);
+    element.find('[data-task-name-section] [data-task-name-input]').val(data.title);
 
-<script src="jquery-3.6.1.min.js"></script>
-<script src="script.js"></script>
+    element.find('[data-task-content-section] [data-task-content-paragraph]').text(data.content);
+    element.find('[data-task-content-section] [data-task-content-input]').val(data.content);
 
-</body>
-</html>
+    return element;
+  }
+
+  function prepareBoardOrListSelectOptions(availableChoices) {
+    return availableChoices.map(function(choice) {
+      return $('<option>')
+          .addClass('crud-select__option')
+          .val(choice.id)
+          .text(choice.name || 'Unknown name');
+    });
+  }
+
+  function handleDatatableRender(taskData, boards) {
+    $tasksContainer.empty();
+    boards.forEach(board => {
+      availableBoards[board.id] = board;
+    });
+
+    taskData.forEach(function(task) {
+      var $datatableRowEl = createElement(task);
+      var $availableBoardsOptionElements = prepareBoardOrListSelectOptions(boards);
+
+      $datatableRowEl.find('[data-board-name-select]')
+          .append($availableBoardsOptionElements);
+
+      $datatableRowEl
+          .appendTo($tasksContainer);
+    });
+  }
+
+  function getAllTasks() {
+    const requestUrl = apiRoot;
+
+    $.ajax({
+      url: requestUrl,
+      method: 'GET',
+      contentType: "application/json",
+      success: function(tasks) {
+        tasks.forEach(task => {
+          availableTasks[task.id] = task;
+        });
+
+        getAllAvailableBoards(handleDatatableRender, tasks);
+      }
+    });
+  }
+
+  function handleTaskUpdateRequest() {
+    var parentEl = $(this).parents('[data-task-id]');
+    var taskId = parentEl.attr('data-task-id');
+    var taskTitle = parentEl.find('[data-task-name-input]').val();
+    var taskContent = parentEl.find('[data-task-content-input]').val();
+    var requestUrl = apiRoot;
+
+    $.ajax({
+      url: requestUrl,
+      method: "PUT",
+      processData: false,
+      contentType: "application/json; charset=utf-8",
+      dataType: 'json',
+      data: JSON.stringify({
+        id: taskId,
+        title: taskTitle,
+        content: taskContent
+      }),
+      success: function(data) {
+        parentEl.attr('data-task-id', data.id).toggleClass('datatable__row--editing');
+        parentEl.find('[data-task-name-paragraph]').text(taskTitle);
+        parentEl.find('[data-task-content-paragraph]').text(taskContent);
+      }
+    });
+  }
+
+  function handleTaskDeleteRequest() {
+    var parentEl = $(this).parents('[data-task-id]');
+    var taskId = parentEl.attr('data-task-id');
+    var requestUrl = apiRoot;
+
+    $.ajax({
+      url: requestUrl + '/' + taskId,
+      method: 'DELETE',
+      success: function() {
+        parentEl.slideUp(400, function() { parentEl.remove(); });
+      }
+    })
+  }
+
+  function handleTaskSubmitRequest(event) {
+    event.preventDefault();
+
+    var taskTitle = $(this).find('[name="title"]').val();
+    var taskContent = $(this).find('[name="content"]').val();
+
+    var requestUrl = apiRoot;
+
+    $.ajax({
+      url: requestUrl,
+      method: 'POST',
+      processData: false,
+      contentType: "application/json; charset=utf-8",
+      dataType: 'json',
+      data: JSON.stringify({
+        title: taskTitle,
+        content: taskContent
+      }),
+      complete: function(data) {
+        if (data.status === 200) {
+          getAllTasks();
+        }
+      }
+    });
+  }
+
+  function toggleEditingState() {
+    var parentEl = $(this).parents('[data-task-id]');
+    parentEl.toggleClass('datatable__row--editing');
+
+    var taskTitle = parentEl.find('[data-task-name-paragraph]').text();
+    var taskContent = parentEl.find('[data-task-content-paragraph]').text();
+
+    parentEl.find('[data-task-name-input]').val(taskTitle);
+    parentEl.find('[data-task-content-input]').val(taskContent);
+  }
+
+  function handleBoardNameSelect(event) {
+    var $changedSelectEl = $(event.target);
+    var selectedBoardId = $changedSelectEl.val();
+    var $listNameSelectEl = $changedSelectEl.siblings('[data-list-name-select]');
+    var preparedListOptions = prepareBoardOrListSelectOptions(availableBoards[selectedBoardId].lists);
+
+    $listNameSelectEl.empty().append(preparedListOptions);
+  }
+
+  function handleCardCreationRequest(event) {
+    var requestUrl = trelloApiRoot + '/cards';
+    var $relatedTaskRow = $(event.target).parents('[data-task-id]');
+    var relatedTaskId = $relatedTaskRow.attr('data-task-id');
+    var relatedTask = availableTasks[relatedTaskId];
+    var selectedListId = $relatedTaskRow.find('[data-list-name-select]').val();
+
+    if (!selectedListId) {
+      alert('You have to select a board and a list first!');
+      return;
+    }
+
+    $.ajax({
+      url: requestUrl,
+      method: 'POST',
+      processData: false,
+      contentType: "application/json; charset=utf-8",
+      dataType: 'json',
+      data: JSON.stringify({
+        name: relatedTask.title,
+        description: relatedTask.content,
+        listId: selectedListId
+      }),
+      success: function(data) {
+        console.log('Card created - ' + data.shortUrl);
+        alert('Card created - ' + data.shortUrl);
+      }
+    });
+  }
+
+  $('[data-task-add-form]').on('submit', handleTaskSubmitRequest);
+
+  $tasksContainer.on('change','[data-board-name-select]', handleBoardNameSelect);
+  $tasksContainer.on('click','[data-trello-card-creation-trigger]', handleCardCreationRequest);
+  $tasksContainer.on('click','[data-task-edit-button]', toggleEditingState);
+  $tasksContainer.on('click','[data-task-edit-abort-button]', toggleEditingState);
+  $tasksContainer.on('click','[data-task-submit-update-button]', handleTaskUpdateRequest);
+  $tasksContainer.on('click','[data-task-delete-button]', handleTaskDeleteRequest);
+});
